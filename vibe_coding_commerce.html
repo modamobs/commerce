@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>바이브코딩 스토어 · 입문자를 위한 커머스 UI</title>
+  <meta name="description" content="볼트(bolt.new) 참고용: 단일 HTML로 구현한 제품 리스트/배너/상세/옵션/장바구니 토스트" />
+  <style>
+    :root{
+      --bg:#0b0c10; --panel:#11131a; --card:#141826; --border:#262a39; --text:#e8ecf6; --muted:#a6adbb;
+      --brand:#1f86ff; --brand-2:#7c5cff; --ok:#22c55e; --danger:#ef4444; --shadow:0 12px 28px rgba(0,0,0,.35);
+      --r-lg:16px; --r:12px; --r-sm:10px;
+    }
+    :root.light{ --bg:#f6f8ff; --panel:#ffffff; --card:#ffffff; --border:#e6e9f2; --text:#0f1220; --muted:#5b6476; --shadow:0 16px 40px rgba(20,22,40,.08)}
+    html,body{height:100%}
+    body{margin:0; font-family:ui-sans-serif,system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Helvetica, Arial; background:var(--bg); color:var(--text)}
+    .container{max-width:1200px; margin:0 auto; padding:20px}
+    header{position:sticky; top:0; z-index:50; background:color-mix(in oklab, var(--bg) 80%, transparent); backdrop-filter: blur(10px); border-bottom:1px solid var(--border)}
+    .header-inner{display:flex; gap:12px; align-items:center; padding:12px 20px}
+    .logo{display:flex; gap:10px; align-items:center; font-weight:800}
+    .badge{width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--brand-2),#1ea7ff); display:grid; place-items:center; box-shadow:var(--shadow)}
+    .badge svg{width:18px; height:18px; fill:#fff}
+    .search{flex:1; position:relative}
+    .search input{width:100%; height:42px; border-radius:999px; padding:0 44px 0 40px; border:1px solid var(--border); background:var(--panel); color:var(--text)}
+    .search svg{position:absolute; left:12px; top:50%; translate:0 -50%; width:18px; height:18px; fill:var(--muted)}
+    .btn{height:40px; padding:0 14px; border-radius:12px; border:1px solid var(--border); background:var(--panel); color:var(--text); display:inline-flex; align-items:center; gap:8px; cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,var(--brand),#3aa2ff); color:#fff; border-color:transparent}
+    .btn[disabled]{opacity:.6; cursor:not-allowed}
+
+    /* 그리드 */
+    .grid{display:grid; gap:20px; grid-template-columns:repeat(4,1fr)}
+    @media (max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:840px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:580px){.grid{grid-template-columns:1fr}}
+
+    /* 카드 */
+    .card{background:var(--card); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow); display:flex; flex-direction:column}
+    .thumb{aspect-ratio:16/9; background:linear-gradient(135deg,#20243a,#2a3050); position:relative}
+    .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+    .body{padding:14px}
+    .title{font-weight:700; margin:6px 0}
+    .price{color:var(--text); font-weight:800}
+    .muted{color:var(--muted); font-size:14px}
+    .stars{color:#16a34a; display:inline-flex; gap:2px; vertical-align:middle}
+    .opt{margin-top:12px}
+    select, .seg, .swatches{width:100%}
+    select{height:40px; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--text); padding:0 10px}
+    .seg{display:flex; gap:8px}
+    .seg button{flex:1; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer}
+    .seg button[aria-pressed="true"]{outline:2px solid color-mix(in oklab, var(--brand) 50%, #fff)}
+    .swatches{display:flex; gap:10px; align-items:center}
+    .swatch{width:20px; height:20px; border-radius:999px; border:2px solid var(--border); cursor:pointer; position:relative}
+    .swatch[aria-checked="true"]::after{content:""; position:absolute; inset:3px; border-radius:999px; outline:2px solid #fff}
+    .card .footer{margin-top:auto; padding:14px}
+
+    /* 배너 */
+    .banner{margin:22px 0; background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; position:relative}
+    .banner .img{height:220px; background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="%230b0c10"/><stop offset="1" stop-color="%23202840"/></linearGradient></defs><rect width="1200" height="400" fill="url(%23g)"/><g stroke="%23ffffff" stroke-opacity="0.18" fill="none"><circle cx="200" cy="200" r="140"/><circle cx="350" cy="160" r="100"/><circle cx="520" cy="210" r="180"/></g></svg>') center/cover no-repeat}
+    .banner .content{position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between; padding:24px}
+    .banner h2{margin:0; font-size: clamp(22px, 2.6vw, 36px)}
+
+    /* 상세 */
+    .detail{margin-top:22px; background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; display:grid; grid-template-columns:1.1fr 1fr}
+    @media (max-width:900px){.detail{grid-template-columns:1fr}}
+    .gallery{padding:16px}
+    .gallery-main{aspect-ratio:16/10; border-radius:12px; overflow:hidden; background:#1b1f33}
+    .gallery-main img{width:100%; height:100%; object-fit:cover}
+    .thumbs{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:10px}
+    .thumbs button{aspect-ratio:16/10; border-radius:10px; border:2px solid transparent; overflow:hidden; cursor:pointer}
+    .thumbs button[aria-current="true"]{border-color:color-mix(in oklab, var(--brand) 60%, #fff)}
+    .d-body{padding:18px 18px 22px; border-left:1px solid var(--border)}
+    .d-title{font-size: clamp(22px, 2.4vw, 36px); margin:0 0 6px 0; font-weight:800}
+    .d-stars{display:flex; gap:8px; align-items:center}
+    .d-price{font-size:22px; font-weight:800; margin:10px 0}
+    .qty{display:inline-grid; grid-template-columns:36px 48px 36px; border:1px solid var(--border); border-radius:10px; overflow:hidden}
+    .qty button{height:40px; background:var(--panel); color:var(--text); border:none; cursor:pointer}
+    .qty input{width:48px; height:40px; background:var(--panel); color:var(--text); border:none; text-align:center}
+    .d-actions{display:flex; gap:12px; margin-top:14px}
+
+    /* 토스트 */
+    .toast{position:fixed; right:16px; bottom:16px; background:var(--card); border:1px solid var(--border); padding:12px 14px; border-radius:12px; box-shadow:var(--shadow); display:none}
+
+    footer{margin-top:30px; border-top:1px solid var(--border)}
+    .footer-inner{padding:18px 0; display:flex; justify-content:space-between; align-items:center; color:var(--muted)}
+    :focus-visible{outline:2px solid color-mix(in oklab, var(--brand) 70%, #fff); outline-offset:2px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-inner">
+      <div class="logo">
+        <span class="badge"><svg viewBox="0 0 24 24"><path d="M12 2l3.5 6.8L23 10l-5.5 4.9L18.8 22 12 18.6 5.2 22l1.3-7.1L1 10l7.5-1.2z"/></svg></span>
+        <span>바이브코딩 스토어</span>
+      </div>
+      <label class="search" aria-label="검색">
+        <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14.1l4.3 4.3 1.4-1.4-4.3-4.3A8 8 0 0010 2zm0 2a6 6 0 110 12A6 6 0 0110 4z"/></svg>
+        <input id="q" type="search" placeholder="검색: 노트북, 스피커, 액세서리…" aria-controls="grid" />
+      </label>
+      <div class="actions">
+        <button id="theme" class="btn" aria-pressed="false">테마</button>
+        <button class="btn btn-primary" onclick="alert('데모: 장바구니 보기')">장바구니</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 제품 리스트 -->
+    <section aria-labelledby="list-title">
+      <h2 id="list-title" style="margin:12px 0 10px">추천 제품</h2>
+      <div id="grid" class="grid" aria-live="polite"></div>
+    </section>
+
+    <!-- 배너 -->
+    <section class="banner" aria-label="프로모션 배너">
+      <div class="img" aria-hidden="true"></div>
+      <div class="content">
+        <div>
+          <h2>Empower Your <span style="color:color-mix(in oklab, var(--brand) 70%, #fff)">Workflow</span></h2>
+          <p class="muted">Embrace innovation with every interaction</p>
+        </div>
+        <button class="btn btn-primary" onclick="scrollTo({top:0, behavior:'smooth'})">Browse Tech Products</button>
+      </div>
+    </section>
+
+    <!-- 상세 화면 -->
+    <section id="detail" class="detail" aria-labelledby="detail-title" hidden>
+      <div class="gallery">
+        <div class="gallery-main"><img id="d-main" alt="제품 이미지"/></div>
+        <div id="d-thumbs" class="thumbs"></div>
+      </div>
+      <div class="d-body">
+        <h3 id="detail-title" class="d-title"></h3>
+        <div class="d-stars"><span class="stars" aria-label="평점 5점">★★★★★</span> <span class="muted" id="d-review">(1 customer review)</span></div>
+        <div id="d-price" class="d-price"></div>
+        <p id="d-desc" class="muted">—</p>
+
+        <div class="opt">
+          <label class="muted" for="d-select">Specifications</label>
+          <select id="d-select" aria-label="옵션 선택"></select>
+        </div>
+
+        <div class="d-actions">
+          <div class="qty" role="group" aria-label="수량 조절">
+            <button id="minus" aria-label="감소">−</button>
+            <input id="qty" type="text" value="1" aria-live="polite" inputmode="numeric" />
+            <button id="plus" aria-label="증가">+</button>
+          </div>
+          <button id="addDetail" class="btn btn-primary">Add To Cart</button>
+        </div>
+        <div style="margin-top:10px" class="muted">Categories: <a id="d-cat" href="#">—</a></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">장바구니에 담겼습니다! ✅</div>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>© 2025 VibeCoding Store</span>
+      <nav aria-label="푸터 링크" style="display:flex; gap:14px"><a class="muted" href="#">고객센터</a><a class="muted" href="#">반품/교환</a><a class="muted" href="#">개인정보</a></nav>
+    </div>
+  </footer>
+
+  <script>
+  // 더미 데이터 (이미지: 베이스64/플레이스홀더)
+  const IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop stop-color="#1b1f33"/><stop offset="1" stop-color="#2a3050"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="800" fill="url(#g)"/>
+      <g fill="#ffffff" fill-opacity="0.15">
+        <rect x="80" y="80" width="280" height="180" rx="14"/>
+        <rect x="420" y="120" width="320" height="220" rx="14"/>
+        <rect x="820" y="200" width="260" height="180" rx="14"/>
+      </g>
+    </svg>`);
+
+  const products = [
+    {id:'zenith', title:'ZenithPro Ultrabook', price:'$480 – $860', rating:5, category:'Laptops', desc:'휴대성과 성능을 모두 잡은 울트라북. 수업/개발/디자인에 최적화.', options:['Core i5 · 8GB · 256GB','Core i7 · 16GB · 512GB','Core i7 · 32GB · 1TB'], images:[IMG,IMG,IMG,IMG,IMG]},
+    {id:'glide', title:'GlideTalk X20', price:'$180 – $530', rating:5, category:'Phones', desc:'빠른 부팅과 선명한 디스플레이. 학습과 콘텐츠 제작에 적합.', options:['8GB','16GB','32GB'], images:[IMG,IMG,IMG,IMG,IMG]},
+    {id:'vibesnd', title:'Vibe Wireless Sound Devices', price:'$29 – $90', rating:5, category:'Audio', desc:'집중을 돕는 선명한 사운드. 저지연 모드 지원.', options:['White','Black'], images:[IMG,IMG,IMG,IMG,IMG]},
+    {id:'flare', title:'Flare Smart Speaker And Assistant', price:'$6 – $14', rating:5, category:'Smart', desc:'작지만 똑똑한 스마트 스피커. 목소리로 공부 타이머 설정.', options:['Black','Blue'], images:[IMG,IMG,IMG,IMG,IMG]},
+  ];
+
+  const q = document.getElementById('q');
+  const grid = document.getElementById('grid');
+  const toast = document.getElementById('toast');
+
+  function star(n){return '★★★★★'.slice(0,n)}
+
+  function renderGrid(){
+    const term = (q.value||'').toLowerCase();
+    grid.innerHTML = '';
+    products.filter(p=>!term || p.title.toLowerCase().includes(term)).forEach(p=>{
+      const el = document.createElement('article');
+      el.className = 'card';
+      el.innerHTML = `
+        <div class="thumb"><img alt="${p.title}" src="${p.images[0]}"/></div>
+        <div class="body">
+          <div class="title">${p.title}</div>
+          <div class="price">${p.price} <span class="stars" aria-label="평점 ${p.rating}점">${star(p.rating)}</span></div>
+          <div class="muted" style="margin-top:6px">${p.desc}</div>
+          <div class="opt">
+            ${p.id==='zenith' ? `<label class="muted">Specifications</label><select>${p.options.map(o=>`<option>${o}</option>`).join('')}</select>` : ''}
+            ${p.id==='glide' ? `<label class="muted">Memory</label><div class="seg">${p.options.map((o,i)=>`<button aria-pressed="${i===0}">${o}</button>`).join('')}</div>` : ''}
+            ${p.id==='vibesnd' || p.id==='flare' ? `<label class="muted">Color</label><div class="swatches">${p.options.map((o,i)=>`<div class="swatch" title="${o}" style="background:${i%2? '#e5e7eb':'#0b0c10'}" role="radio" aria-checked="${i===0}"></div>`).join('')}</div>` : ''}
+          </div>
+        </div>
+        <div class="footer">
+          <button class="btn btn-primary">🛒 Add To Cart</button>
+        </div>`;
+      el.querySelector('.thumb').addEventListener('click', ()=> openDetail(p));
+      el.querySelector('.title').addEventListener('click', ()=> openDetail(p));
+      el.querySelector('.btn-primary').addEventListener('click', ()=> addToCart(p.title));
+      grid.appendChild(el);
+    })
+  }
+
+  function showToast(msg='장바구니에 담겼습니다! ✅'){
+    toast.textContent = msg; toast.style.display='block';
+    setTimeout(()=> toast.style.display='none', 1500);
+  }
+  function addToCart(name){ showToast(`${name} 장바구니에 담김! ✅`) }
+
+  // 상세
+  const dSection = document.getElementById('detail');
+  const dTitle = document.getElementById('detail-title');
+  const dPrice = document.getElementById('d-price');
+  const dDesc = document.getElementById('d-desc');
+  const dCat = document.getElementById('d-cat');
+  const dSelect = document.getElementById('d-select');
+  const dMain = document.getElementById('d-main');
+  const dThumbs = document.getElementById('d-thumbs');
+  const addDetail = document.getElementById('addDetail');
+  const qty = document.getElementById('qty');
+
+  function openDetail(p){
+    dSection.hidden = false;
+    dTitle.textContent = p.title;
+    dPrice.textContent = p.price;
+    dDesc.textContent = p.desc;
+    dCat.textContent = p.category; dCat.href = '#';
+    dSelect.innerHTML = p.options.map(o=>`<option>${o}</option>`).join('');
+    dMain.src = p.images[0];
+    dThumbs.innerHTML = '';
+    p.images.forEach((src, i)=>{
+      const b = document.createElement('button');
+      b.innerHTML = `<img src="${src}" alt="${p.title} 이미지 ${i+1}"/>`;
+      b.setAttribute('aria-current', i===0);
+      b.addEventListener('click', ()=>{
+        document.querySelectorAll('#d-thumbs button').forEach(x=>x.removeAttribute('aria-current'));
+        b.setAttribute('aria-current','true');
+        dMain.src = src;
+      });
+      dThumbs.appendChild(b);
+    });
+    addDetail.onclick = ()=> addToCart(p.title + ' × ' + qty.value);
+    window.scrollTo({top:dSection.offsetTop - 10, behavior:'smooth'});
+  }
+
+  // 검색
+  q.addEventListener('input', renderGrid);
+
+  // 테마
+  (function(){ const saved = localStorage.getItem('theme'); if(saved==='light') document.documentElement.classList.add('light');})();
+  document.getElementById('theme').addEventListener('click', ()=>{
+    const root = document.documentElement; const isLight = root.classList.toggle('light');
+    localStorage.setItem('theme', isLight? 'light':'dark');
+  });
+
+  // 수량 조절
+  document.getElementById('minus').addEventListener('click', ()=> qty.value = Math.max(1, (parseInt(qty.value)||1)-1));
+  document.getElementById('plus').addEventListener('click', ()=> qty.value = (parseInt(qty.value)||1)+1);
+
+  // 초기 렌더
+  renderGrid();
+  </script>
+</body>
+</html>
